@@ -11,6 +11,7 @@ def display_gpu_info(root, scr, start_line):
 
     gpunum = 0
     display = False
+    ##n = int(root.find('attached_gpus').text)
 
     for gpu in root.findall('gpu'):
         
@@ -27,12 +28,16 @@ def display_gpu_info(root, scr, start_line):
         if (mem == None):
             mem = gpu.find('fb_memory_usage')
 
-        memu = mem.find('used').text
-        nmemu = memu.split()
+        memu = mem.find('used').text.split()[0]
         memt = mem.find('total').text
         nmemt = memt.split()
         memuse = memu + '/' + memt
-        usage = float(nmemu[0])*100/float(nmemt[0])
+        usage = float(memu)*100/float(nmemt[0])
+        
+        # Core Utilization
+        util = gpu.find('utilization')
+        gpu_util = util.find('gpu_util').text.split()[0]
+        ngpu_util = float(gpu_util)
         
         # Power Use
         pow = gpu.find('power_readings')
@@ -49,7 +54,9 @@ def display_gpu_info(root, scr, start_line):
             line = line + '%24s*' % name
         else:
             line = line + '%25s' % name
-        line = line + '%20s' % memuse + '%15.2f' % usage + '%20s' % powuse + '%10s' % temp
+        _memall = memuse + ' ' + '[%.1f%%]' % usage
+#        line = line + '%9.2f %%' % ngpu_util + '%20s' % memuse + '%10.2f %%' % usage + '%20s' % powuse + '%10s' % temp
+        line = line + '%10s %%' % ngpu_util + '%25s' % _memall + '%20s' % powuse + '%10s' % temp
 
         scr.addstr(gpunum + start_line, 0, line)
 
@@ -65,9 +72,9 @@ def count_procs(root):
     nproc = 0
 
     for gpu in root.findall('gpu'):
-
-        procs = gpu.findall('processes')
-        nproc = nproc + len(procs)
+        for pro in ['processes', 'compute_processes', 'accounted_processes']:
+            procs = gpu.findall(pro)
+            nproc = nproc + len(procs)
 
     return nproc
 
@@ -88,7 +95,9 @@ def display_proc_info(root, scr, start_line):
                 name = name[0:50] + '...'
             memuse = proc.find('used_memory').text
             
-            line = '%3s' % repr(pnum) + '%8s' % repr(gpunum+1) + '%8s' % pid + '%60s' % name + '%14s' % memuse
+            line = '%3s' % repr(pnum) + '%8s' % repr(gpunum+1) + '%8s' % pid
+            line = line + '%62s' % name + '%14s' % memuse
+            
             scr.addstr(pnum + start_line, 0, line)
             pnum = pnum + 1
 
@@ -100,7 +109,7 @@ def display_proc_info(root, scr, start_line):
     if (pnum_change < 0):
         # adding blank lines to clear old processes
         for i in range(0,-1*pnum_change):
-            scr.addstr(pnum + start_line, 0, ' ' * 94)
+            scr.addstr(pnum + start_line, 0, ' ' * 95)
             pnum = pnum + 1
 
 # ---Main Section---
@@ -111,7 +120,7 @@ if __name__ == '__main__':
 
     try:
         
-        width = 94
+        width = 95
         
         data = sp.check_output(['nvidia-smi', '-q', '-x'])
         root = ET.fromstring(data)
@@ -129,14 +138,14 @@ if __name__ == '__main__':
         # Drawing GPU Header
         gpu_startline = 5
         scr.addstr(gpu_startline, 0, '-' * width)
-        scr.addstr(gpu_startline + 1, 0, '%3s' % '#' + '%25s' % 'Name' + '%20s' % 'Mem. Use' + '%15s' % 'Mem. Use' + '%20s' % 'Pow. Use' + '%10s' % 'Temp.')
+        scr.addstr(gpu_startline + 1, 0, '%3s' % '#' + '%25s' % 'Name' + '%12s' % 'GPU Util' + '%25s' % 'Memory Usage' + '%20s' % 'Power Consumation' + '%10s' % 'Temp')
         scr.addstr(gpu_startline + 2, 0, '-' * width)
         gpu_endline = gpu_startline + 3
         
         # Drawing Proc Header
         proc_startline = gpu_endline + ngpu + 2
         scr.addstr(proc_startline, 0, '-' * width)
-        scr.addstr(proc_startline + 1, 0, '%3s' % '#' + '%8s' % 'GPU' + '%8s' % 'PID' + '%60s' % 'Process Name' + '%14s' % 'Mem. Use')
+        scr.addstr(proc_startline + 1, 0, '%3s' % '#' + '%8s' % 'GPU' + '%8s' % 'PID' + '%62s' % 'Process Name' + '%14s' % 'Mem. Use')
         scr.addstr(proc_startline + 2, 0, '-' * width)
         proc_endline = proc_startline + 3
 
@@ -157,13 +166,14 @@ if __name__ == '__main__':
             display_proc_info(root, scr, proc_endline)
 
             scr.refresh()
-            
+
             key = scr.getch()
             if (key == 27):
                 break
-                
+
     except:
-                
-        print 'Something went wrong! Exception handling is pretty basic right now.'
-                
+        crs.endwin()
+        print ('Something went wrong! Exception handling is pretty basic right now.')
+        raise
+
     crs.endwin()
