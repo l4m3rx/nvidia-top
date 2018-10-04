@@ -6,3 +6,5 @@ For research, I deal with a lot of CUDA development and over time I realized tha
 Note that this tool only monitors NVIDIA GPUs which nvidia-smi can detect. It is written in python and requires the curses package to manage the output.
 
 I plan to add additional functionality as I find more time. If you feel like something would be particularly useful and would like me to consider adding then email me at ab9 [at] mit.edu.
+
+![alt text](https://raw.githubusercontent.com/l4m3rx/nvidia-top/master/nvidia-top.png)
