@@ -11,7 +11,6 @@ def display_gpu_info(root, scr, start_line):
 
     gpunum = 0
     display = False
-    ##n = int(root.find('attached_gpus').text)
 
     for gpu in root.findall('gpu'):
         
@@ -49,13 +48,13 @@ def display_gpu_info(root, scr, start_line):
         temp = gpu.find('temperature')
         temp = temp.find('gpu_temp').text
         
+        
         line = '%3d' % (gpunum+1)
         if display:
             line = line + '%24s*' % name
         else:
             line = line + '%25s' % name
         _memall = memuse + ' ' + '[%.1f%%]' % usage
-#        line = line + '%9.2f %%' % ngpu_util + '%20s' % memuse + '%10.2f %%' % usage + '%20s' % powuse + '%10s' % temp
         line = line + '%10s %%' % ngpu_util + '%25s' % _memall + '%20s' % powuse + '%10s' % temp
 
         scr.addstr(gpunum + start_line, 0, line)
@@ -77,6 +76,40 @@ def count_procs(root):
             nproc = nproc + len(procs)
 
     return nproc
+
+def display_clocks_info(root, src, start_line):
+
+    gpunum = 0
+    pnum = 0
+
+    for gpu in root.findall('gpu'):
+        # Fan
+        fan = gpu.find('fan_speed').text
+        
+        # Clocks
+        clocks = gpu.find('clocks')
+        sm_clock = clocks.find('sm_clock').text.split()[0]
+        video_clock = clocks.find('video_clock').text.split()[0]
+        memory_clock = clocks.find('mem_clock').text.split()[0]
+        graphics_clock = clocks.find('graphics_clock').text.split()[0]
+        
+        # Max Clocks
+        max_clocks = gpu.find('max_clocks')
+        sm_max = max_clocks.find('sm_clock').text
+        video_max = max_clocks.find('video_clock').text
+        memory_max = max_clocks.find('mem_clock').text
+        graphics_max = max_clocks.find('graphics_clock').text
+        
+        line = '%3d' % (gpunum+1)
+        line += '%10s/%s' % (graphics_clock, graphics_max)
+        line += '%10s/%s' % (sm_clock, sm_max)
+        line += '%10s/%s' % (memory_clock, memory_max)
+        line += '%10s/%s' % (video_clock, video_max)
+        line += '%16s' % fan
+        
+        scr.addstr(gpunum + start_line, 0, line)
+        gpunum = gpunum+1
+
 
 def display_proc_info(root, scr, start_line):
 
@@ -142,8 +175,15 @@ if __name__ == '__main__':
         scr.addstr(gpu_startline + 2, 0, '-' * width)
         gpu_endline = gpu_startline + 3
         
+        # Drawing Clocks Header
+        clocks_startline = gpu_endline + ngpu + 2
+        scr.addstr(clocks_startline, 0, '-' * width)
+        scr.addstr(clocks_startline + 1, 0, '%3s' % '#' + '%19s' % 'Graphics' + '%19s' % 'SM Core' + '%19s' % 'Memory' + '%19s' % 'Video' + '%16s' % 'Fan')
+        scr.addstr(clocks_startline + 2, 0, '-' * width)
+        clocks_endline = clocks_startline + 3
+        
         # Drawing Proc Header
-        proc_startline = gpu_endline + ngpu + 2
+        proc_startline = clocks_endline + ngpu + 2
         scr.addstr(proc_startline, 0, '-' * width)
         scr.addstr(proc_startline + 1, 0, '%3s' % '#' + '%8s' % 'GPU' + '%8s' % 'PID' + '%62s' % 'Process Name' + '%14s' % 'Mem. Use')
         scr.addstr(proc_startline + 2, 0, '-' * width)
@@ -163,6 +203,7 @@ if __name__ == '__main__':
             scr.addstr(1, 0, 'Timestamp:\t' + timestamp)
             
             display_gpu_info(root, scr, gpu_endline)
+            display_clocks_info(root, scr, clocks_endline)
             display_proc_info(root, scr, proc_endline)
 
             scr.refresh()
@@ -170,10 +211,7 @@ if __name__ == '__main__':
             key = scr.getch()
             if (key == 27):
                 break
-
     except:
-        crs.endwin()
         print ('Something went wrong! Exception handling is pretty basic right now.')
-        raise
 
     crs.endwin()
